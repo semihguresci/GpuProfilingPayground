@@ -8,8 +8,8 @@ A containerized Vulkan micro-benchmark that renders one controlled workload at a
 
 This Level 0 repo intentionally scopes to **one executable** (`vk-bench`) and **three micro-scenes**:
 
-- `triangle` (sanity / low work)
-- `million-tris` (high draw-like transfer load)
+- `triangle` (real graphics pipeline rendering one triangle to an offscreen target)
+- `million-tris` (graphics raster stress via 1,000,000 triangle instances)
 - `compute-copy` (bandwidth-focused transfer load)
 
 No assets, textures, or engine features are included.
@@ -83,5 +83,5 @@ vk-bench --headless --frames 300 --out results.json
 
 ## Known limitations
 
-- Current Level 0 workload uses transfer-copy command streams to provide stable timing; it does not yet create a swapchain/windowed render path.
+- Triangle and million-tris scenes render offscreen (headless-friendly) and do not create a swapchain/windowed present path yet.
 - CI can validate build/formatting but not real GPU benchmark values unless run on a self-hosted GPU runner.
