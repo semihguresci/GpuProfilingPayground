@@ -24,10 +24,13 @@ docker run --rm --gpus all -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix 
 docker run --rm --gpus all vk-bench --headless --frames 300 --out results.json
 ```
 
+
+Scripts default to Docker image `vk-bench`. Override with `VK_BENCH_IMAGE=<image>` if needed.
+
 ### Bench all 3 scenes
 
 ```bash
-scripts/run_bench.sh results
+scripts/run_bench.sh results  # runs inside Docker image vk-bench
 ```
 
 ## Example results
@@ -51,14 +54,15 @@ scripts/run_bench.sh results
 ## Nsight steps (exact command)
 
 ```bash
-scripts/nsight_capture.sh results/nsight_capture
+scripts/nsight_capture.sh results/nsight_capture  # profiles docker run
 ```
 
 Or directly:
 
 ```bash
 nsys profile --trace=vulkan,nvtx,cuda --output results/nsight_capture \
-  vk-bench --headless --scene million-tris --warmup 20 --frames 120 --out results/nsight_capture.json
+  docker run --rm --gpus all -v "$(pwd)/results:/results" vk-bench \
+  --headless --scene million-tris --warmup 20 --frames 120 --out /results/nsight_capture.json
 ```
 
 ![Nsight capture screenshot](docs/nsight-capture.svg)
