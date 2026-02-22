@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
-find_program(GLSLANG_VALIDATOR glslangValidator REQUIRED)
+find_program(SLANGC slangc REQUIRED)
 
 set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 set(SPIRV_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
@@ -19,14 +19,14 @@ set(SHADER_OUTPUTS
 
 add_custom_command(
   OUTPUT ${SPIRV_DIR}/triangle.vert.spv
-  COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_DIR}/triangle.vert -o ${SPIRV_DIR}/triangle.vert.spv
-  DEPENDS ${SHADER_DIR}/triangle.vert
+  COMMAND ${SLANGC} -target spirv -profile glsl_460 -entry main -stage vertex ${SHADER_DIR}/triangle.vert.slang -o ${SPIRV_DIR}/triangle.vert.spv
+  DEPENDS ${SHADER_DIR}/triangle.vert.slang
 )
 
 add_custom_command(
   OUTPUT ${SPIRV_DIR}/triangle.frag.spv
-  COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_DIR}/triangle.frag -o ${SPIRV_DIR}/triangle.frag.spv
-  DEPENDS ${SHADER_DIR}/triangle.frag
+  COMMAND ${SLANGC} -target spirv -profile glsl_460 -entry main -stage fragment ${SHADER_DIR}/triangle.frag.slang -o ${SPIRV_DIR}/triangle.frag.spv
+  DEPENDS ${SHADER_DIR}/triangle.frag.slang
 )
 
 add_custom_target(vk-bench-shaders DEPENDS ${SHADER_OUTPUTS})

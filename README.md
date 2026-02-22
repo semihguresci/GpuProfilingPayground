@@ -14,6 +14,8 @@ This Level 0 repo intentionally scopes to **one executable** (`vk-bench`) and **
 
 No assets, textures, or engine features are included.
 
+Shaders are authored in **Slang** and compiled to SPIR-V during build.
+
 ## How to run
 
 ```bash

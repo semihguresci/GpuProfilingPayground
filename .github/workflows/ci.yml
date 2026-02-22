@@ -12,7 +12,13 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ libvulkan-dev clang-format
+          sudo apt-get install -y cmake g++ libvulkan-dev clang-format curl ca-certificates
+      - name: Install slangc
+        run: |
+          SLANG_VERSION=2024.17.2
+          curl -fsSL -o slang.tar.gz https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz
+          tar -xzf slang.tar.gz
+          sudo install -m 0755 slang-${SLANG_VERSION}/bin/slangc /usr/local/bin/slangc
       - name: Build
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
