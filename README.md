@@ -14,7 +14,7 @@ This Level 0 repo intentionally scopes to **one executable** (`vk-bench`) and **
 
 No assets, textures, or engine features are included.
 
-Shaders are authored in **Slang** and compiled to SPIR-V during build.
+Shaders are authored in **Slang** and compiled to SPIR-V during build, then installed next to the executable (`<bin>/shaders`) for cross-platform runtime lookup.
 
 ## How to run
 

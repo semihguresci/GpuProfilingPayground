@@ -4,6 +4,8 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -12,10 +14,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#ifndef VK_BENCH_SHADER_DIR
-#define VK_BENCH_SHADER_DIR "./shaders"
-#endif
 
 struct Config {
   bool headless = false;
@@ -108,6 +106,41 @@ Config parse_args(int argc, char **argv) {
   return cfg;
 }
 
+std::string pick_shader_dir(const char *argv0) {
+  namespace fs = std::filesystem;
+
+  std::vector<fs::path> candidates;
+  if (argv0 != nullptr && std::strlen(argv0) > 0) {
+    fs::path exe_path(argv0);
+    if (!exe_path.is_absolute()) {
+      exe_path = fs::absolute(exe_path);
+    }
+    candidates.push_back(exe_path.parent_path() / "shaders");
+  }
+
+#ifdef VK_BENCH_SHADER_DIR
+  candidates.emplace_back(VK_BENCH_SHADER_DIR);
+#endif
+  candidates.emplace_back(fs::current_path() / "shaders");
+
+  for (const auto &candidate : candidates) {
+    std::error_code ec;
+    if (fs::exists(candidate / "triangle.vert.spv", ec) &&
+        fs::exists(candidate / "triangle.frag.spv", ec)) {
+      return candidate.string();
+    }
+  }
+
+  std::string searched;
+  for (const auto &candidate : candidates) {
+    if (!searched.empty()) {
+      searched += ", ";
+    }
+    searched += candidate.string();
+  }
+  fail("Failed to locate shader directory. Checked: " + searched);
+}
+
 std::vector<uint32_t> read_spirv(const std::string &path) {
   std::ifstream file(path, std::ios::binary | std::ios::ate);
   if (!file) {
@@ -179,7 +212,8 @@ void destroy_buffer(VkDevice device, BufferWithMemory &buffer) {
 
 TriangleResources create_triangle_resources(VkPhysicalDevice physical,
                                             VkDevice device, uint32_t width,
-                                            uint32_t height) {
+                                            uint32_t height,
+                                            const std::string &shader_dir) {
   TriangleResources out{};
 
   VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
@@ -267,10 +301,8 @@ TriangleResources create_triangle_resources(VkPhysicalDevice physical,
     fail("vkCreateFramebuffer failed");
   }
 
-  const auto vert =
-      read_spirv(std::string(VK_BENCH_SHADER_DIR) + "/triangle.vert.spv");
-  const auto frag =
-      read_spirv(std::string(VK_BENCH_SHADER_DIR) + "/triangle.frag.spv");
+  const auto vert = read_spirv(shader_dir + "/triangle.vert.spv");
+  const auto frag = read_spirv(shader_dir + "/triangle.frag.spv");
 
   VkShaderModuleCreateInfo smci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
   smci.codeSize = vert.size() * sizeof(uint32_t);
@@ -482,10 +514,11 @@ int main(int argc, char **argv) {
 
     const bool graphics_scene =
         cfg.scene == "triangle" || cfg.scene == "million-tris";
+    const std::string shader_dir = pick_shader_dir(argv[0]);
     TriangleResources triangle{};
     if (graphics_scene) {
-      triangle =
-          create_triangle_resources(physical, device, cfg.width, cfg.height);
+      triangle = create_triangle_resources(physical, device, cfg.width,
+                                           cfg.height, shader_dir);
     }
 
     BufferWithMemory src{};

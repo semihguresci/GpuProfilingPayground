@@ -23,8 +23,8 @@ COPY shaders /workspace/shaders
 RUN cmake -S /workspace -B /workspace/build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build /workspace/build --config Release -j"$(nproc)" \
     && install -m 0755 /workspace/build/vk-bench /usr/local/bin/vk-bench \
-    && install -d /usr/local/share/vk-bench/shaders \
-    && cp /workspace/build/shaders/*.spv /usr/local/share/vk-bench/shaders/
+    && install -d /usr/local/bin/shaders \
+    && cp /workspace/build/shaders/*.spv /usr/local/bin/shaders/
 
 COPY docker/entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

@@ -35,7 +35,5 @@ add_executable(vk-bench src/main.cpp)
 add_dependencies(vk-bench vk-bench-shaders)
 target_include_directories(vk-bench PRIVATE include)
 target_link_libraries(vk-bench PRIVATE Vulkan::Vulkan)
-target_compile_definitions(vk-bench PRIVATE VK_BENCH_SHADER_DIR="/usr/local/share/vk-bench/shaders")
-
 install(TARGETS vk-bench RUNTIME DESTINATION bin)
-install(FILES ${SHADER_OUTPUTS} DESTINATION share/vk-bench/shaders)
+install(FILES ${SHADER_OUTPUTS} DESTINATION bin/shaders)
