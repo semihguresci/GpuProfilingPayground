@@ -1,0 +1,26 @@
+# build outputs
+out/
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.ninja
+.ninja_*
+compile_commands.json
+Testing/
+CTestTestfile.cmake
+
+# git + editor stuff
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# optional: large artifacts
+*.tar
+*.tar.gz
+results/
