@@ -110,11 +110,17 @@ std::string pick_shader_dir(const char *argv0) {
   namespace fs = std::filesystem;
 
   std::vector<fs::path> candidates;
+<<<<<<< ours
+<<<<<<< ours
 
   if (const char* env = std::getenv("VK_BENCH_SHADER_DIR"); env && *env) {
     candidates.emplace_back(env);
   }
 
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
   if (argv0 != nullptr && std::strlen(argv0) > 0) {
     fs::path exe_path(argv0);
     if (!exe_path.is_absolute()) {
@@ -123,6 +129,18 @@ std::string pick_shader_dir(const char *argv0) {
     candidates.push_back(exe_path.parent_path() / "shaders");
   }
 
+<<<<<<< ours
+<<<<<<< ours
+=======
+#ifdef VK_BENCH_SHADER_DIR
+  candidates.emplace_back(VK_BENCH_SHADER_DIR);
+#endif
+>>>>>>> theirs
+=======
+#ifdef VK_BENCH_SHADER_DIR
+  candidates.emplace_back(VK_BENCH_SHADER_DIR);
+#endif
+>>>>>>> theirs
   candidates.emplace_back(fs::current_path() / "shaders");
 
   for (const auto &candidate : candidates) {
@@ -135,7 +153,19 @@ std::string pick_shader_dir(const char *argv0) {
 
   std::string searched;
   for (const auto &candidate : candidates) {
+<<<<<<< ours
+<<<<<<< ours
     if (!searched.empty()) searched += ", ";
+=======
+    if (!searched.empty()) {
+      searched += ", ";
+    }
+>>>>>>> theirs
+=======
+    if (!searched.empty()) {
+      searched += ", ";
+    }
+>>>>>>> theirs
     searched += candidate.string();
   }
   fail("Failed to locate shader directory. Checked: " + searched);
