@@ -1,0 +1,9 @@
+build/
+results/*.json
+results/*.txt
+results/*.qdrep
+results/*.nsys-rep
+results/*.sqlite
+/.vs
+/out
+/results
