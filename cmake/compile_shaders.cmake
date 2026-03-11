@@ -4,13 +4,39 @@ include_guard(GLOBAL)
 # Allow override: -DSLANGC=/path/to/slangc
 set(SLANGC "" CACHE FILEPATH "Path to slangc executable")
 if (SLANGC STREQUAL "")
-  find_program(SLANGC slangc)
+  # Allow explicit environment variable override.
+  if (DEFINED ENV{SLANGC} AND NOT "$ENV{SLANGC}" STREQUAL "")
+    set(SLANGC "$ENV{SLANGC}")
+  endif()
+endif()
+
+if (SLANGC STREQUAL "")
+  # First try PATH.
+  find_program(_SLANGC_PATH NAMES slangc slangc.exe)
+  if (_SLANGC_PATH)
+    set(SLANGC "${_SLANGC_PATH}" CACHE FILEPATH "Path to slangc executable" FORCE)
+  endif()
+endif()
+
+if (SLANGC STREQUAL "" OR NOT SLANGC)
+  # Common Vulkan SDK install location (slangc is often shipped in Bin).
+  if (DEFINED ENV{VULKAN_SDK} AND NOT "$ENV{VULKAN_SDK}" STREQUAL "")
+    find_program(_SLANGC_PATH
+      NAMES slangc slangc.exe
+      HINTS "$ENV{VULKAN_SDK}/Bin"
+      NO_DEFAULT_PATH
+    )
+    if (_SLANGC_PATH)
+      set(SLANGC "${_SLANGC_PATH}" CACHE FILEPATH "Path to slangc executable" FORCE)
+    endif()
+  endif()
 endif()
 
 if (SLANGC STREQUAL "" OR NOT SLANGC)
   message(FATAL_ERROR
     "SLANGC is not set and slangc was not found in PATH. "
-    "Set -DSLANGC=/path/to/slangc or ensure slangc is in PATH."
+    "Set -DSLANGC=/path/to/slangc, set SLANGC env var, "
+    "or ensure slangc is in PATH (or in $ENV{VULKAN_SDK}/Bin)."
   )
 endif()
 

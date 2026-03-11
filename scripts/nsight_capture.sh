@@ -1,26 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE="${VK_BENCH_IMAGE:-vk-bench}"
-OUT="${1:-results/nsight_capture}"
-mkdir -p "$(dirname "$OUT")"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "docker is required for scripts/nsight_capture.sh" >&2
-  exit 1
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN=python
+  else
+    echo "python3 (or python) is required for scripts/nsight_capture.sh" >&2
+    exit 1
+  fi
 fi
 
-if ! command -v nsys >/dev/null 2>&1; then
-  echo "nsys not found on host. Install NVIDIA Nsight Systems to use this script." >&2
-  exit 1
-fi
-
-nsys profile \
-  --trace=vulkan,nvtx,cuda \
-  --output "$OUT" \
-  docker run --rm --gpus all \
-    -v "$(pwd)/results:/results" \
-    "$IMAGE" \
-    --headless --scene million-tris --warmup 20 --frames 120 --vsync 0 --out /results/nsight_capture.json
-
-echo "Capture written to ${OUT}.qdrep (or .nsys-rep depending on version)."
+"$PYTHON_BIN" "$SCRIPT_DIR/nsight_capture.py" "$@"

@@ -1,4 +1,3 @@
-# build outputs
 out/
 build/
 cmake-build-*/
@@ -10,17 +9,15 @@ compile_commands.json
 Testing/
 CTestTestfile.cmake
 
-# git + editor stuff
 .git/
 .gitignore
 .vscode/
 .idea/
+.vs/
 
-# OS junk
 .DS_Store
 Thumbs.db
 
-# optional: large artifacts
 *.tar
 *.tar.gz
 results/

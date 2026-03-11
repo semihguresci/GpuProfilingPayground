@@ -1,39 +1,106 @@
 # vk-bench (Level 0 Vulkan micro-benchmark)
 
-**Purpose**
+`vk-bench` is a focused Vulkan benchmark app that runs one controlled workload per frame and emits JSON timing summaries suitable for regression tracking.
 
-A containerized Vulkan micro-benchmark that renders one controlled workload at a time and produces repeatable performance numbers plus Nsight captures.
+## Scope
 
-## What this benchmarks
+This repository contains one executable (`vk-bench`) with three scenes:
 
-This Level 0 repo intentionally scopes to **one executable** (`vk-bench`) and **three micro-scenes**:
+- `triangle`: graphics path drawing one triangle (or `--triangles N` instances)
+- `million-tris`: raster stress path drawing 1,000,000 instances
+- `compute-copy`: compute-only path using a storage-buffer dispatch
 
-- `triangle` (real graphics pipeline rendering one triangle to an offscreen target)
-- `million-tris` (graphics raster stress via 1,000,000 triangle instances)
-- `compute-copy` (bandwidth-focused transfer load)
+No engine systems, textures, or model assets are included.
 
-No assets, textures, or engine features are included.
-
-Shaders are authored in **Slang** and compiled to SPIR-V during build, then installed next to the executable (`<bin>/shaders`) for cross-platform runtime lookup.
-
-## How to run
+## Quick start (Docker)
 
 ```bash
-docker build -t vk-bench .
-docker run --rm --gpus all -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix vk-bench
-docker run --rm --gpus all vk-bench --headless --frames 300 --out results.json
+docker build -f Dockerfile -t vk-bench .
+docker run --rm --gpus all vk-bench --headless --frames 300 --out /tmp/results.json
 ```
 
+Scripts default to image `vk-bench`. Set `VK_BENCH_IMAGE=<name>` to override.
+Cross-platform script entrypoints are Python-based (`scripts/*.py`) with `.sh` and `.ps1` wrappers.
 
-Scripts default to Docker image `vk-bench`. Override with `VK_BENCH_IMAGE=<image>` if needed.
-
-### Bench all 3 scenes
+## Build locally (CMake)
 
 ```bash
-scripts/run_bench.sh results  # runs inside Docker image vk-bench
+cmake -S . -B out/build -DVK_BENCH_ENABLE_WINDOW=ON -DVK_BENCH_FETCH_GLFW=ON
+cmake --build out/build --config Release
 ```
 
-## Example results
+- `VK_BENCH_ENABLE_WINDOW=ON|OFF`: enable or disable GLFW-backed window mode.
+- `VK_BENCH_FETCH_GLFW=ON|OFF`: fetch GLFW if no system package is found.
+
+## Run scenarios
+
+Run a single benchmark:
+
+```bash
+docker run --rm --gpus all vk-bench \
+  --headless --scene million-tris --warmup 30 --frames 300 --out /tmp/million-tris.json
+```
+
+Run a local windowed rendering test:
+
+```bash
+cmake -S . -B out/build-window -DVK_BENCH_ENABLE_WINDOW=ON -DVK_BENCH_FETCH_GLFW=ON
+cmake --build out/build-window --config Release
+./out/build-window/Release/vk-bench --scene triangle --frames 300 --vsync 1 --out results/windowed-triangle.json
+```
+
+Windowed mode is supported for `triangle` and `million-tris`. Do not pass `--headless` for this path.
+
+Run a compute-only benchmark:
+
+```bash
+docker run --rm --gpus all vk-bench \
+  --headless --scene compute-copy --warmup 30 --frames 300 --out /tmp/compute-copy.json
+```
+
+`compute-copy` is a headless-only path. It does not create a window or present a swapchain.
+
+Run scripted benchmark(s):
+
+```bash
+scripts/run_bench.sh results
+```
+
+Docker mode from Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_bench.ps1 results
+```
+
+Run scripted benchmark(s) in local mode:
+
+```bash
+python3 scripts/run_bench.py --mode local results
+```
+
+Run local mode from Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_bench_local.ps1 -ResultDir results
+```
+
+The local runner uses `--headless` and the same default scenes (`triangle`, `million-tris`, `compute-copy`). It configures/builds `out/build-local` by default, then writes JSON outputs to `results/`.
+
+Note: the current script default scene list is defined in `scripts/run_bench.py`.
+The script refuses to run unless `vulkaninfo --summary` inside the container reports an NVIDIA Vulkan device, which prevents accidental fallback to software Vulkan such as `llvmpipe`.
+
+## Output format
+
+Each run writes JSON with metadata + summary stats:
+
+- `scene`, `headless`, `frames`, `warmup`, `vsync`
+- `resolution`, `device_name`, `driver_version`
+- `cpu_frame_time_ms` (`avg`, `p50`, `p95`)
+- `gpu_frame_time_ms` (`avg`, `p50`, `p95`)
+
+Headless graphics runs also write a screenshot bitmap next to the JSON output using the same basename, for example `results.json` and `results.bmp`. Compute-only runs do not emit an image.
+
+Example:
 
 ```json
 {
@@ -45,49 +112,81 @@ scripts/run_bench.sh results  # runs inside Docker image vk-bench
 
 ![Frame time output screenshot](docs/frame-time-output.svg)
 
-## How timing is measured (CPU/GPU)
+## Timing model
 
-- **GPU frame time**: Vulkan timestamp queries (`vkCmdWriteTimestamp`) around the workload command region.
-- **CPU frame time (submission)**: host timer around `vkQueueSubmit` call.
-- Per-frame values are recorded and summarized as `avg`, `p50`, and `p95` in JSON.
+- GPU timing uses two Vulkan timestamps around the recorded workload.
+- CPU timing measures submit-to-complete per frame.
+- Warmup frames are not recorded in final statistics.
 
-## Nsight steps (exact command)
+## Nsight capture
 
 ```bash
-scripts/nsight_capture.sh results/nsight_capture  # profiles docker run
+scripts/nsight_capture.sh results/nsight_capture
 ```
 
-Or directly:
+Capture a specific scene:
+
+```bash
+scripts/nsight_capture.sh results/nsight_triangle --scene triangle
+```
+
+Windows PowerShell wrapper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/nsight_capture.ps1 results/nsight_capture
+```
+
+If `nsys` is not in `PATH` on Windows, pass the full executable path:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/nsight_capture.ps1 results/nsight_capture --nsys-path "C:\Program Files\NVIDIA Corporation\Nsight Systems 2025.4.1\target-windows-x64\nsys.exe"
+```
+
+Direct local equivalent:
 
 ```bash
 nsys profile --trace=vulkan,nvtx,cuda --output results/nsight_capture \
-  docker run --rm --gpus all -v "$(pwd)/results:/results" vk-bench \
-  --headless --scene million-tris --warmup 20 --frames 120 --out /results/nsight_capture.json
+  ./out/build-local/Release/vk-bench \
+  --headless --scene million-tris --warmup 20 --frames 120 --vsync 0 --out results/nsight_capture.json
 ```
 
 ![Nsight capture screenshot](docs/nsight-capture.svg)
 
-## Container GPU access options
+## Troubleshooting GPU access
 
-### Option A: Linux host + NVIDIA (recommended)
-
-- Use `--gpus all`.
-- Verify loader + ICD in-container:
+Recommended (Linux + NVIDIA):
 
 ```bash
 docker run --rm --gpus all vk-bench vulkaninfo --summary
 ```
 
-### Option B: Headless-only explicit ICD config
+`scripts/run_bench.sh` performs this check automatically and exits early if the container does not expose an NVIDIA Vulkan device.
 
-If automatic ICD discovery is unavailable, set:
+Collect host/container system info:
+
+```bash
+scripts/collect_system_info.sh results/system_info.txt
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/collect_system_info.ps1 results/system_info.txt
+```
+
+Fallback ICD override (headless):
 
 ```bash
 export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
 vk-bench --headless --frames 300 --out results.json
 ```
 
-## Known limitations
+## Repository layout
 
-- Triangle and million-tris scenes render offscreen (headless-friendly) and do not create a swapchain/windowed present path yet.
-- CI can validate build/formatting but not real GPU benchmark values unless run on a self-hosted GPU runner.
+- `src/`: Vulkan benchmark implementation
+- `shaders/`: Slang shader sources compiled to SPIR-V at build time
+- `scripts/`: benchmark and profiling helper scripts
+- `docs/`: screenshots and usage artifacts
+
+## Limitations
+
+- Window mode requires build-time GLFW support (`VK_BENCH_HAS_WINDOW=1`).
+- CI can validate build/lint flow, but meaningful performance validation needs GPU-backed runners.

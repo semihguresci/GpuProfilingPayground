@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420">
-  <rect width="100%" height="100%" fill="#111827"/>
-  <text x="20" y="40" fill="#e5e7eb" font-family="monospace" font-size="24">vk-bench --headless --scene million-tris --frames 300</text>
-  <text x="20" y="90" fill="#93c5fd" font-family="monospace" font-size="20">Wrote benchmark results to results/million-tris.json</text>
-  <text x="20" y="140" fill="#f9fafb" font-family="monospace" font-size="20">cpu avg/p50/p95: 0.073 / 0.061 / 0.119 ms</text>
-  <text x="20" y="180" fill="#f9fafb" font-family="monospace" font-size="20">gpu avg/p50/p95: 2.418 / 2.340 / 2.756 ms</text>
-  <rect x="20" y="220" width="900" height="160" fill="#1f2937" stroke="#374151"/>
-  <polyline fill="none" stroke="#22c55e" stroke-width="3" points="30,340 100,330 170,335 240,320 310,300 380,290 450,285 520,275 590,280 660,268 730,260 800,250 870,245"/>
-</svg>

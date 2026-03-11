@@ -4,11 +4,6 @@ results/*.txt
 results/*.qdrep
 results/*.nsys-rep
 results/*.sqlite
-<<<<<<< ours
-<<<<<<< ours
 /.vs
 /out
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
+/results
