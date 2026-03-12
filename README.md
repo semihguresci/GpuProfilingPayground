@@ -1,4 +1,4 @@
-# vk-bench (Level 0 Vulkan micro-benchmark)
+# vk-bench
 
 `vk-bench` is a focused Vulkan benchmark app that runs one controlled workload per frame and emits JSON timing summaries suitable for regression tracking.
 
