@@ -110,8 +110,6 @@ Example:
 }
 ```
 
-![Frame time output screenshot](docs/frame-time-output.svg)
-
 ## Timing model
 
 - GPU timing uses two Vulkan timestamps around the recorded workload.
@@ -150,8 +148,6 @@ nsys profile --trace=vulkan,nvtx,cuda --output results/nsight_capture \
   --headless --scene million-tris --warmup 20 --frames 120 --vsync 0 --out results/nsight_capture.json
 ```
 
-![Nsight capture screenshot](docs/nsight-capture.svg)
-
 ## Troubleshooting GPU access
 
 Recommended (Linux + NVIDIA):
@@ -184,7 +180,6 @@ vk-bench --headless --frames 300 --out results.json
 - `src/`: Vulkan benchmark implementation
 - `shaders/`: Slang shader sources compiled to SPIR-V at build time
 - `scripts/`: benchmark and profiling helper scripts
-- `docs/`: screenshots and usage artifacts
 
 ## Limitations
 
