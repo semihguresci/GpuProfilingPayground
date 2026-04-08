@@ -164,32 +164,49 @@ Config parse_args(int argc, char **argv) {
       return argv[++i];
     };
 
+    auto parse_uint32 = [](const std::string &name,
+                           const std::string &value) -> uint32_t {
+      try {
+        const unsigned long v = std::stoul(value);
+        if (v > std::numeric_limits<uint32_t>::max()) {
+          fail("Value out of range for " + name + ": " + value);
+        }
+        return static_cast<uint32_t>(v);
+      } catch (const std::logic_error &) {
+        fail("Invalid integer value for " + name + ": " + value);
+      }
+    };
+
     if (arg == "--headless") {
       cfg.headless = true;
     } else if (arg == "--frames") {
-      cfg.frames = std::stoul(read("--frames"));
+      cfg.frames = parse_uint32("--frames", read("--frames"));
     } else if (arg == "--warmup") {
-      cfg.warmup = std::stoul(read("--warmup"));
+      cfg.warmup = parse_uint32("--warmup", read("--warmup"));
     } else if (arg == "--vsync") {
-      cfg.vsync = std::stoul(read("--vsync"));
+      cfg.vsync = parse_uint32("--vsync", read("--vsync"));
     } else if (arg == "--out") {
       cfg.out = read("--out");
     } else if (arg == "--scene") {
       cfg.scene = read("--scene");
     } else if (arg == "--triangles") {
-      cfg.triangles = std::stoul(read("--triangles"));
+      cfg.triangles = parse_uint32("--triangles", read("--triangles"));
     } else if (arg == "--resolution") {
       const auto value = read("--resolution");
       const auto x = value.find('x');
       if (x == std::string::npos) {
         fail("Expected WIDTHxHEIGHT for --resolution");
       }
-      cfg.width = std::stoul(value.substr(0, x));
-      cfg.height = std::stoul(value.substr(x + 1));
+      cfg.width = parse_uint32("--resolution width", value.substr(0, x));
+      cfg.height = parse_uint32("--resolution height", value.substr(x + 1));
+      if (cfg.width == 0 || cfg.height == 0) {
+        fail("--resolution width and height must be greater than 0");
+      }
     } else if (arg == "--help" || arg == "-h") {
       std::cout
           << "vk-bench --headless --frames N --warmup N --vsync 0|1 --out "
-             "file.json --scene triangle|million-tris|compute-copy [--triangles N]\n";
+             "file.json --scene triangle|million-tris|compute-copy "
+             "[--triangles N] [--resolution WxH]\n";
       std::exit(0);
     } else {
       fail("Unknown argument: " + arg);
@@ -472,7 +489,11 @@ void capture_image_to_bmp(VkPhysicalDevice physical, VkDevice device,
 
   VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  vkBeginCommandBuffer(cmd, &begin);
+  if (vkBeginCommandBuffer(cmd, &begin) != VK_SUCCESS) {
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkBeginCommandBuffer for screenshot failed");
+  }
   transition_image_layout(cmd, target.image, target.layout,
                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
@@ -484,20 +505,43 @@ void capture_image_to_bmp(VkPhysicalDevice physical, VkDevice device,
                          staging.buffer, 1, &copy);
   transition_image_layout(cmd, target.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                           target.layout);
-  vkEndCommandBuffer(cmd);
+  if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkEndCommandBuffer for screenshot failed");
+  }
 
   VkFenceCreateInfo fence_ci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
   VkFence fence = VK_NULL_HANDLE;
-  vkCreateFence(device, &fence_ci, nullptr, &fence);
+  if (vkCreateFence(device, &fence_ci, nullptr, &fence) != VK_SUCCESS) {
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkCreateFence for screenshot failed");
+  }
 
   VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   submit.commandBufferCount = 1;
   submit.pCommandBuffers = &cmd;
-  vkQueueSubmit(queue, 1, &submit, fence);
-  vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+  if (vkQueueSubmit(queue, 1, &submit, fence) != VK_SUCCESS) {
+    vkDestroyFence(device, fence, nullptr);
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkQueueSubmit for screenshot failed");
+  }
+  if (vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+    vkDestroyFence(device, fence, nullptr);
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkWaitForFences for screenshot failed");
+  }
 
   void *mapped = nullptr;
-  vkMapMemory(device, staging.memory, 0, buffer_size, 0, &mapped);
+  if (vkMapMemory(device, staging.memory, 0, buffer_size, 0, &mapped) != VK_SUCCESS) {
+    vkDestroyFence(device, fence, nullptr);
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    destroy_buffer(device, staging);
+    fail("vkMapMemory for screenshot failed");
+  }
   write_bmp(path, static_cast<const uint8_t *>(mapped), 4, target.width,
             target.height, target.format);
   vkUnmapMemory(device, staging.memory);
@@ -1581,6 +1625,9 @@ int main(int argc, char **argv) {
     }
 
     std::ofstream out(cfg.out);
+    if (!out) {
+      fail("Failed to open output file: " + cfg.out);
+    }
     out << std::fixed << std::setprecision(4);
     out << "{\n";
     out << "  \"scene\": \"" << cfg.scene << "\",\n";
