@@ -172,8 +172,9 @@ Config parse_args(int argc, char **argv) {
           fail("Value out of range for " + name + ": " + value);
         }
         return static_cast<uint32_t>(v);
-      } catch (const std::logic_error &) {
-        fail("Invalid integer value for " + name + ": " + value);
+      } catch (const std::logic_error &e) {
+        fail("Invalid integer value for " + name + ": " + value +
+             " (" + e.what() + ")");
       }
     };
 
@@ -529,6 +530,9 @@ void capture_image_to_bmp(VkPhysicalDevice physical, VkDevice device,
     fail("vkQueueSubmit for screenshot failed");
   }
   if (vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+    // Drain the queue before destroying resources to avoid racing with in-flight
+    // GPU work that may still be executing after the fence wait failure.
+    vkQueueWaitIdle(queue);
     vkDestroyFence(device, fence, nullptr);
     vkFreeCommandBuffers(device, pool, 1, &cmd);
     destroy_buffer(device, staging);
